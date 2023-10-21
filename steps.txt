@@ -1,0 +1,24 @@
+Step 1: Setting Up the Environment
+Step 2: Defining the Agent
+Step 3: Adding a Reward Signal
+Step 4: Implementing Learning
+Step 5: Running Multiple Episodes
+Step 6: Exploration vs. Exploitation
+Step 7: Learning Rate Decay
+Step 8: Reward Shaping
+Step 9: Terminal States and Episode Reset
+Step 10: Proper Episode Management
+Step 11: Softmax Exploration
+Step 12: Adaptive Learning Rate
+Step 13: Discount Factor for Future Rewards
+Step 14: Experience Replay
+Step 15: Using Experience Replay in Training
+Step 16: Introducing Function Approximation with a Linear Model
+Step 17: Updating the Agent to Use the Linear Model
+Step 18: Main Function Updates
+Step 19: Neural Network as Q-function Approximator
+Step 20: Incorporate Neural Network into Agent
+Step 21: Main Function Updates
+Step 22: Target Network for Stability
+Step 23: Main Function Updates
+Step 24: Adding a Learning Rate Scheduler
