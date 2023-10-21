@@ -301,8 +301,16 @@ func learningRateScheduler(step int) float64 {
 
 func main() {
 	numEpisodes := 1000
-	totalEpisodeRewards := make([]float64, numEpisodes)
-	maxPossibleEpisodeReward := 0.0
+	maxPossibleTotalRewards := 0.0
+	totalRewards := make([]float64, numEpisodes)
+
+	var (
+		// Early Stopping Parameters
+		minImprovement float64 = 0.01             // Minimum improvement to consider as progress
+		patience       int     = 10               // Number of episodes to wait for improvement before stopping
+		waitCounter    int     = 0                // Counter to keep track of episodes without improvement
+		bestReward     float64 = -math.MaxFloat64 // Initialize with the lowest possible value
+	)
 
 	for episode := 0; episode < numEpisodes; episode++ {
 		env := Environment{}                                                         // reset environment at the start of each episode
@@ -310,8 +318,8 @@ func main() {
 		replayBuffer := NewReplayBuffer(ReplayBufferSize)
 
 		totalReward := 0.0
-		for step := 0; step < 100; step++ {
-			maxPossibleEpisodeReward += 0.97
+		for step := 0; step < 1000; step++ {
+			maxPossibleTotalRewards += 0.97
 			agent.UpdateLearningRate(agent.StepCount)
 
 			state := env.State
@@ -340,13 +348,26 @@ func main() {
 			}
 		}
 
-		totalEpisodeRewards[episode] = totalReward
+		totalRewards[episode] = totalReward
+
+		// Early Stopping Check
+		if totalReward > bestReward+minImprovement {
+			bestReward = totalReward
+			waitCounter = 0 // Reset the wait counter since we have improvement
+		} else {
+			waitCounter++
+			if waitCounter >= patience {
+				fmt.Println("Early stopping triggered")
+				break
+			}
+		}
+
 		fmt.Printf("Episode %d finished. Total Reward: %.2f\n", episode+1, totalReward)
 	}
 
-	fmt.Printf("Episodes finished. Total Episode Reward: %.2f / %.2f\n", sum(totalEpisodeRewards), maxPossibleEpisodeReward)
+	fmt.Printf("Episodes finished. Total Episode Reward: %.2f / %.2f\n", sum(totalRewards), maxPossibleTotalRewards)
 	// Call the function to visualize the results
-	visualizeLearningProgress(totalEpisodeRewards)
+	visualizeLearningProgress(totalRewards)
 }
 
 func sum(vals []float64) float64 {
