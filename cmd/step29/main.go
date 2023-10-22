@@ -2,16 +2,14 @@
 * Reward Normalization
 **/
 
-// In reinforcement learning, it’s often beneficial to normalize rewards,
-// especially when the scale of the rewards is large or varies significantly
-// from one state to another. Normalizing rewards can help in speeding up the
-// training and achieving more stable convergence.
+// Policy evaluation is an important aspect of reinforcement learning, as it
+// allows us to estimate the value function of a policy, which is essential for
+// understanding how good a given policy is.
 
-// Reward normalization transforms the rewards received from the environment
-// into a standard scale, typically between -1 and 1, or 0 and 1. This can be
-// done using various techniques such as min-max scaling, z-score normalization,
-// or others.
-
+// Policy evaluation is the process of assessing a policy to determine its
+// effectiveness. This is done by calculating the value function of the policy,
+// which gives us the expected cumulative reward that can be obtained from each
+// state while following the policy.
 package main
 
 import (

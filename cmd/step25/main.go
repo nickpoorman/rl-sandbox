@@ -299,6 +299,42 @@ func learningRateScheduler(step int) float64 {
 	return BaseLearningRate * math.Exp(-float64(step)/1000.0)
 }
 
+func sum(vals []float64) float64 {
+	var total float64
+	for _, v := range vals {
+		total += v
+	}
+	return total
+}
+
+func visualizeLearningProgress(totalRewards []float64) {
+	p := plot.New()
+
+	p.Title.Text = "Learning Progress"
+	p.X.Label.Text = "Episodes"
+	p.Y.Label.Text = "Total Reward"
+
+	pts := make(plotter.XYs, len(totalRewards))
+	for i := range totalRewards {
+		pts[i].X = float64(i)
+		pts[i].Y = totalRewards[i]
+	}
+
+	line, err := plotter.NewLine(pts)
+	if err != nil {
+		log.Fatalf("Could not create line plotter: %v", err)
+	}
+
+	p.Add(line)
+	p.Legend.Add("Total Reward", line)
+
+	if err := p.Save(6*vg.Inch, 6*vg.Inch, "learning_progress.png"); err != nil {
+		log.Fatalf("Could not save plot to file: %v", err)
+	}
+
+	fmt.Println("Learning progress plot saved to learning_progress.png")
+}
+
 func main() {
 	numEpisodes := 1000
 	maxPossibleTotalRewards := 0.0
@@ -368,40 +404,4 @@ func main() {
 	fmt.Printf("Episodes finished. Total Episode Reward: %.2f / %.2f\n", sum(totalRewards), maxPossibleTotalRewards)
 	// Call the function to visualize the results
 	visualizeLearningProgress(totalRewards)
-}
-
-func sum(vals []float64) float64 {
-	var total float64
-	for _, v := range vals {
-		total += v
-	}
-	return total
-}
-
-func visualizeLearningProgress(totalRewards []float64) {
-	p := plot.New()
-
-	p.Title.Text = "Learning Progress"
-	p.X.Label.Text = "Episodes"
-	p.Y.Label.Text = "Total Reward"
-
-	pts := make(plotter.XYs, len(totalRewards))
-	for i := range totalRewards {
-		pts[i].X = float64(i)
-		pts[i].Y = totalRewards[i]
-	}
-
-	line, err := plotter.NewLine(pts)
-	if err != nil {
-		log.Fatalf("Could not create line plotter: %v", err)
-	}
-
-	p.Add(line)
-	p.Legend.Add("Total Reward", line)
-
-	if err := p.Save(6*vg.Inch, 6*vg.Inch, "learning_progress.png"); err != nil {
-		log.Fatalf("Could not save plot to file: %v", err)
-	}
-
-	fmt.Println("Learning progress plot saved to learning_progress.png")
 }

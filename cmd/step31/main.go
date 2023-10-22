@@ -1,16 +1,6 @@
 /**
-* Reward Normalization
+* Policy Iteration and Evaluation
 **/
-
-// In reinforcement learning, it’s often beneficial to normalize rewards,
-// especially when the scale of the rewards is large or varies significantly
-// from one state to another. Normalizing rewards can help in speeding up the
-// training and achieving more stable convergence.
-
-// Reward normalization transforms the rewards received from the environment
-// into a standard scale, typically between -1 and 1, or 0 and 1. This can be
-// done using various techniques such as min-max scaling, z-score normalization,
-// or others.
 
 package main
 
@@ -35,7 +25,6 @@ const (
 const (
 	NumStates        = 5
 	NumActions       = 2 // 0: move left, 1: move right
-	Epsilon          = 0.1
 	Gamma            = 0.9
 	ReplayBufferSize = 1000
 	BatchSize        = 32
@@ -45,6 +34,10 @@ const (
 // Environment struct to represent our world
 type Environment struct {
 	State int
+}
+
+func NewEnvironment() *Environment {
+	return &Environment{}
 }
 
 // Step function to take an action and move the agent
@@ -66,12 +59,26 @@ func (env *Environment) Step(action int) (int, float64, bool) {
 	return env.State, reward, done
 }
 
+func (env *Environment) StateCount() int {
+	return NumStates
+}
+
+func (env *Environment) ActionCount() int {
+	return 2 // Assuming two actions: 0 for decrease, 1 for increase
+}
+
+func (env *Environment) Reset() int {
+	env.State = 0 // Assuming 0 is the initial state
+	return env.State
+}
+
 // Agent struct to represent our learning agent
 type Agent struct {
+	env *Environment
+
 	Policy       []int
 	Model        *NeuralNet
 	TargetModel  *NeuralNet
-	Epsilon      float64
 	Visits       [][]int
 	TargetUpdate int // How many steps to take before updating the target network
 	StepCount    int // Keep track of the number of steps taken
@@ -82,7 +89,7 @@ type Agent struct {
 	RewardStd  float64
 }
 
-func NewAgent(numStates, numActions int, epsilon float64, targetUpdate int) *Agent {
+func NewAgent(env *Environment, numStates, numActions int, targetUpdate int) *Agent {
 	policy := make([]int, numStates)
 	model := NewNeuralNet(numStates, numActions)
 	targetModel := NewNeuralNet(numStates, numActions)
@@ -93,10 +100,10 @@ func NewAgent(numStates, numActions int, epsilon float64, targetUpdate int) *Age
 		visits[s] = make([]int, numActions)
 	}
 	return &Agent{
+		env:          env,
 		Policy:       policy,
 		Model:        model,
 		TargetModel:  targetModel,
-		Epsilon:      epsilon,
 		Visits:       visits,
 		TargetUpdate: targetUpdate,
 
@@ -184,6 +191,55 @@ func (agent *Agent) UpdateQValues(state, action int, reward float64, newState in
 		rewardDiff := reward - agent.RewardMean
 		agent.RewardStd = math.Sqrt(0.99*agent.RewardStd*agent.RewardStd + 0.01*rewardDiff*rewardDiff)
 	}
+}
+
+func (agent *Agent) ExtractPolicy() []int {
+	policy := make([]int, NumStates)
+	for s := 0; s < NumStates; s++ {
+		input := make([]float64, agent.Model.NumInput)
+		input[s] = 1
+		qValues := agent.Model.Forward(input)
+		policy[s] = argMax(qValues)
+	}
+	return policy
+}
+
+func (agent *Agent) EvaluatePolicy(policy []int) float64 {
+	state := agent.env.Reset()
+	totalReward := 0.0
+	done := false
+	for !done {
+		action := policy[state]
+		nextState, reward, d := agent.env.Step(action)
+		done = d
+		totalReward += reward
+		state = nextState
+	}
+	return totalReward
+}
+
+// ensures our policy array is in sync with the current Q-values
+func (agent *Agent) ImprovePolicy() {
+	for s := 0; s < NumStates; s++ {
+		input := make([]float64, agent.Model.NumInput)
+		input[s] = 1
+		qValues := agent.Model.Forward(input)
+		agent.Policy[s] = argMax(qValues)
+	}
+}
+
+// argMax is a helper function that returns the index of the maximum value in a
+// slice
+func argMax(slice []float64) int {
+	maxIndex := 0
+	maxValue := slice[0]
+	for i, value := range slice {
+		if value > maxValue {
+			maxValue = value
+			maxIndex = i
+		}
+	}
+	return maxIndex
 }
 
 func max(slice []float64) float64 {
@@ -363,6 +419,7 @@ func visualizeLearningProgress(totalRewards []float64) {
 
 func main() {
 	numEpisodes := 1000
+	maxStepsPerEpisode := 1000
 	maxPossibleTotalRewards := 0.0
 	totalRewards := make([]float64, numEpisodes)
 
@@ -374,20 +431,26 @@ func main() {
 		bestReward     float64 = -math.MaxFloat64 // Initialize with the lowest possible value
 	)
 
-	for episode := 0; episode < numEpisodes; episode++ {
-		env := Environment{}                                                         // reset environment at the start of each episode
-		agent := NewAgent(NumStates, NumActions, 1.0/(1.0+float64(episode)/100), 50) // decay epsilon
-		replayBuffer := NewReplayBuffer(ReplayBufferSize)
+	env := NewEnvironment()
+	// reset environment at the start of each episode
+	agent := NewAgent(env, NumStates, NumActions, 50)
 
+	for episode := 0; episode < numEpisodes; episode++ {
+		state := env.Reset()
+		replayBuffer := NewReplayBuffer(ReplayBufferSize)
 		totalReward := 0.0
-		for step := 0; step < 1000; step++ {
+
+		for step := 0; step < maxStepsPerEpisode; step++ {
 			maxPossibleTotalRewards += 0.97
+
 			agent.UpdateLearningRate(agent.StepCount)
 
-			state := env.State
 			action := agent.Act(state)
+
 			newState, reward, done := env.Step(action)
+
 			agent.UpdateQValues(state, action, reward, newState, done)
+
 			totalReward += reward
 
 			fmt.Printf("Episode %d, Step %d: State: %d, Action: %d, New State: %d, Reward: %.2f\n", episode+1, step+1, state, action, newState, reward)
@@ -404,6 +467,8 @@ func main() {
 				}
 			}
 
+			state = newState
+
 			if done {
 				fmt.Printf("Episode %d finished after %d steps. Total Reward: %.2f\n", episode+1, step+1, totalReward)
 				break
@@ -411,6 +476,11 @@ func main() {
 		}
 
 		totalRewards[episode] = totalReward
+
+		agent.ImprovePolicy()                               // Ensure policy is up-to-date
+		currentPolicy := agent.ExtractPolicy()              // Extract policy based on current Q-values
+		policyReward := agent.EvaluatePolicy(currentPolicy) // Evaluate the extracted policy
+		fmt.Printf("Episode: %d, Total Reward: %f, Evaluated Policy Reward: %f\n", episode, totalReward, policyReward)
 
 		// Early Stopping Check
 		if totalReward > bestReward+minImprovement {
