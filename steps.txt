@@ -28,3 +28,6 @@ Step 27: Visualizing Learning Progress
 Step 28: Early Stopping
 Step 29: Reward Normalization
 Step 30: Policy Iteration and Evaluation
+Step 31: Policy Improvement
+Step 32: Putting Everything Together
+Step 33: Double Q-Learning
